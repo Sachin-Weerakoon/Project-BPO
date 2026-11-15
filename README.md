@@ -66,5 +66,5 @@ Full rules: [CONTRIBUTING.md](CONTRIBUTING.md) · Secrets: [docs/secrets.md](doc
 | Sathsarani | SE | Backend (Express APIs, MongoDB models) |
 | Dumindu | DevOps | Docker, CI/CD, local and staging environment |
 | Dulieka | DevOps | Cloud infrastructure, Kubernetes/ECS, networking |
-| Suvathica | DevOps | Repo setup, secrets, logging, monitoring, backups |
+| Suvethica | DevOps | Repo setup, secrets, logging, monitoring, backups |
 | Navod | DevSecOps | Security (auth, headers, scanning, WAF, secrets review) |

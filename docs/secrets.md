@@ -1,6 +1,6 @@
 # Secrets management
 
-- **Owner:** Suvathica (with Navod for security review, Dumindu for CI, Dulieka for cloud)
+- **Owner:** Suvethica (with Navod for security review, Dumindu for CI, Dulieka for cloud)
 - **Status:** v2 (Day 2). Staging store follows [ADR 0002](decisions/0002-cloud-platform.md) (AWS ECS Fargate, draft). If the cloud decision changes, only section 4 changes.
 
 ## 1. Rules

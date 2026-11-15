@@ -10,7 +10,7 @@
 | Bug fix | `fix/<name>-<short-description>` | `fix/megha-profile-form-validation` | fixing a bug |
 | Chore / infra | `chore/<name>-<topic>` or `infra/<name>-<topic>` | `infra/dumindu-docker-compose` | Docker, CI, config, tooling |
 | Security | `security/<name>-<topic>` | `security/navod-headers` | security improvements |
-| Docs | `docs/<name>-<topic>` | `docs/suvathica-runbook` | documentation only |
+| Docs | `docs/<name>-<topic>` | `docs/suvethica-runbook` | documentation only |
 
 Start every branch from the latest `main`:
 

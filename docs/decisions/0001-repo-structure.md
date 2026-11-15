@@ -1,7 +1,7 @@
 # ADR 0001: Repository structure and branching
 
 - **Status:** proposed (Day 1)
-- **Owners:** Suvathica (repo conventions), Dumindu (monorepo decision)
+- **Owners:** Suvethica (repo conventions), Dumindu (monorepo decision)
 
 ## Decision
 
