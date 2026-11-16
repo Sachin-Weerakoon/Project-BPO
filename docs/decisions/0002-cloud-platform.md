@@ -1,49 +1,60 @@
 # 0002 – Cloud platform and staging architecture
 
-Status: Proposed (draft, Day 1)
+Status: Proposed (v2, Day 2) – waiting for lead answers (see Open questions)
 Owner: Dulieka (with Dumindu, Suvathica, Navod)
 
 ## Context
-- 14-day MVP; staging must be reachable by Day 8–10, hardened by Day 14 (SRS D.4).
-- Two containers: `web` (Next.js) and `api` (Express). Dependencies: MongoDB (Atlas), Redis, S3-compatible storage.
-- SRS allows Kubernetes or ECS, and asks for no hard lock-in to proprietary cloud services.
-- Security requirements (SRS D.3): private networking for data stores, TLS 1.2+, least-privilege
-  security groups, secrets injected at runtime, WAF in front of public endpoints, encrypted backups.
-- Team is new to production cloud work; setup time and cost matter more than scale.
+- 14-day MVP; staging must be reachable by Day 8–10 (SRS D.4).
+- Two containers: `web` (Next.js) and `api` (Express), plus MongoDB and Redis.
+- The lead asked for a **free** hosting option for the MVP.
+- SRS D.3 asks for private DB networking, WAF and encrypted backups; a free setup cannot meet all of these.
 
 ## Options considered
-| Option | Pros | Cons |
+| Option | Cost | Verdict |
 |---|---|---|
-| A. AWS ECS on Fargate | No cluster/node management; fast to set up; integrates with ALB, Secrets Manager, CloudWatch, ECR | AWS-specific task definitions (lock-in) |
-| B. Managed Kubernetes (AWS EKS / GKE / DOKS) | Portable manifests; industry-standard skills | More setup and moving parts; control-plane cost on some providers; steep for 14 days |
-| C. Single VM + Docker Compose | Cheapest and simplest | No zero-downtime deploys; weak fit for SRS availability and hardening goals |
+| A. Oracle Cloud Always Free ARM VM + Docker Compose, MongoDB Atlas Free, Redis in a container | $0 | **Chosen (proposed)** |
+| B. Vercel Hobby (web) + Render free (api) + Atlas Free + Upstash free | $0 | Rejected |
+| C. AWS Free plan credits + ECS Fargate | $0 until credits run out | Rejected |
+| D. Paid AWS ECS / managed Kubernetes | Monthly cost | Deferred until after MVP |
 
-## Decision
-_To confirm with the lead after checking account access, budget and credits._
-Leaning: Option A (ECS Fargate) for the MVP, keeping containers standard (plain Docker images,
-config via env vars) so a later move to Kubernetes is possible.
+### Why options were rejected
+- **Vercel Hobby:** Vercel's fair-use policy limits Hobby to personal, non-commercial use and counts
+  work by a paid employee as commercial. A company internship project does not qualify.
+- **Render free:** the API sleeps after 15 minutes idle and takes about a minute to wake: poor for demos.
+- **Option B overall:** little Docker/CI/CD work, which does not match the DevOps goals of the internship.
+- **AWS Free plan:** credits run out quickly on a load balancer and NAT gateway; the account closes after
+  6 months or when credits run out; anyone who has had an AWS account before is not eligible.
 
-## Proposed staging architecture
-- Region: closest available to users and team (e.g. ap-south-1 Mumbai or ap-southeast-1 Singapore).
-- VPC across 2 availability zones:
-  - Public subnets: Application Load Balancer (HTTPS only, HTTP→HTTPS redirect), NAT gateway.
-  - Private subnets: `web` and `api` tasks; Redis (ElastiCache). No public IPs on tasks.
-- Security groups: ALB → web/api only; api → Redis only; nothing else inbound.
-- MongoDB Atlas: access restricted to the VPC (private endpoint/peering if the tier supports it,
-  otherwise IP allow-list of NAT egress IP only).
-- Images: Amazon ECR with scan on push; CI also scans with Trivy.
-- Secrets: AWS Secrets Manager or SSM Parameter Store, injected into tasks at runtime.
-- TLS: ACM certificate on the ALB; AWS WAF managed rules in front of the ALB.
-- Storage: private S3 bucket for resumes/logos, access via signed URLs only.
-- Logs/metrics: CloudWatch Logs + container health checks.
+## Decision (proposed)
+Option A: one Oracle Cloud Always Free ARM VM running `web`, `api` and `redis` with Docker Compose,
+behind a reverse proxy with HTTPS. MongoDB Atlas Free cluster for the database.
+
+## Proposed staging setup
+- Oracle **home region**: Mumbai, Hyderabad or Singapore. It is chosen at sign-up and cannot be
+  changed, and Always Free resources only run there.
+- VM: Ampere A1 (ARM). Check the current Always Free CPU/RAM limits at sign-up.
+- Network: only ports 80/443 (and SSH restricted to team IPs) open in the security list.
+- Reverse proxy (Caddy or Nginx) with free Let's Encrypt TLS.
+- Redis: container on the private Docker network, not exposed to the internet.
+- MongoDB Atlas: IP access list allows only the VM's public IP.
+- Images: CI builds **linux/arm64** images with `docker buildx` (to coordinate with Dumindu).
+- Secrets: `.env` on the VM only, readable by the deploy user; never in images or the repo.
+
+## Accepted risks (lead to tick each before approving)
+- [ ] No WAF in front of the app
+- [ ] Database reachable over the internet (restricted by IP allow-list), not private networking
+- [ ] No automated backups on Atlas Free; manual export only
+- [ ] Single VM: no high availability or zero-downtime deploys
+- [ ] Free ARM capacity may be unavailable, and Oracle may reclaim idle free instances
+- [ ] Staging holds **fake/seed data only**: no real candidates or employers
 
 ## Consequences
-- Suvathica can finalise the secret store (docs/secrets.md "To decide").
-- Dumindu's CI pipeline pushes to ECR and deploys to ECS.
-- Navod reviews security groups, WAF rules and IAM roles before staging goes live.
-- Infra-as-code (Terraform) to live in `infra/` — to confirm with team.
+- Dumindu: CI must build and push arm64 images.
+- Suvathica: staging secret store = `.env` on the VM for the MVP (update docs/secrets.md).
+- Navod: review security list rules, TLS setup and SSH access.
+- Before teardown: export MongoDB data, then delete the VM and the cluster.
 
-## Open questions
-- Cloud account / credits available? Budget limit?
-- Is Kubernetes experience a learning goal for this internship (would favour Option B)?
-- Custom domain for staging?
+## Open questions for the lead
+1. Will staging hold only fake data, or will real users access it?
+2. Do you accept the risks listed above?
+3. Who creates and owns the Oracle Cloud account (company account and card)?
