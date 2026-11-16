@@ -20,7 +20,7 @@
 services:
   api:
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:4000/health"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/health"]
       interval: 30s
       timeout: 5s
       retries: 3
