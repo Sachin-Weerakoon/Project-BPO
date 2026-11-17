@@ -40,10 +40,25 @@ behind a reverse proxy with HTTPS. MongoDB Atlas Free cluster for the database.
 - Images: CI builds **linux/arm64** images with `docker buildx` (to coordinate with Dumindu).
 - Secrets: `.env` on the VM only, readable by the deploy user; never in images or the repo.
 
+## Backup and restore
+Note: the lead has decided on PostgreSQL (Supabase) with a DevOps/scaling focus. This section
+already reflects that; the rest of this ADR will be updated in v3.
+
+- **What:** PostgreSQL (Supabase). Redis is not backed up (cache/queue, rebuildable).
+- **How:** a scheduled job (Kubernetes CronJob) runs `pg_dump` daily, encrypts the dump
+  (e.g. `age` or `gpg`) and uploads it to object storage outside the cluster.
+  The encryption key is stored as a Kubernetes Secret, with an offline copy kept by the lead.
+- **Retention:** 7 daily + 4 weekly copies (adjust to storage limits).
+- **If Supabase Pro is used:** Supabase daily backups are primary; our dumps are a secondary copy.
+- **Restore test:** restore the latest dump into a temporary Postgres container and run smoke checks
+  (row counts on core tables, sample queries). Done before staging go-live, then monthly.
+  Steps to be documented in `docs/runbooks/backup-restore.md`.
+- **Owners:** Dulieka (setup), Suvethica (runbook), Navod (review of encryption and access).
+
 ## Accepted risks (lead to tick each before approving)
 - [ ] No WAF in front of the app
 - [ ] Database reachable over the internet (restricted by IP allow-list), not private networking
-- [ ] No automated backups on Atlas Free; manual export only
+- [ ] No managed backups on Supabase Free; our own daily encrypted pg_dump instead (see Backup and restore)
 - [ ] Single VM: no high availability or zero-downtime deploys
 - [ ] Free ARM capacity may be unavailable, and Oracle may reclaim idle free instances
 - [ ] Staging holds **fake/seed data only**: no real candidates or employers
