@@ -28,6 +28,8 @@ spec:
               value: "production"
             - name: PORT
               value: "3000"
+            - name: HOSTNAME
+              value: "0.0.0.0"   # Next.js standalone server must listen on all interfaces inside the pod
           resources:
             requests: { cpu: 100m, memory: 192Mi }
             limits: { cpu: 500m, memory: 512Mi }
