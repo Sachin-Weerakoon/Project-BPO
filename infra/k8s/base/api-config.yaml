@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-config
+  namespace: remotebpo
+data:
+  NODE_ENV: "production"
+  API_PORT: "5000"
+  LOG_LEVEL: "info"
+  APP_URL: "https://staging.example.com"   # placeholder until we have a domain

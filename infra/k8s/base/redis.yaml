@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: remotebpo
+  labels: { app: redis }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: redis }
+  template:
+    metadata:
+      labels: { app: redis }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999   # the 'redis' user in the official image
+      containers:
+        - name: redis
+          image: redis:7-alpine   # multi-arch image, runs on ARM
+          ports:
+            - containerPort: 6379
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 250m, memory: 256Mi }
+          livenessProbe:
+            exec: { command: ["redis-cli", "ping"] }
+            periodSeconds: 10
+          readinessProbe:
+            exec: { command: ["redis-cli", "ping"] }
+            periodSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - { name: data, mountPath: /data }
+      volumes:
+        - name: data
+          emptyDir: {}   # not persistent: Redis is a cache/queue (see ADR "Backup and restore")
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: remotebpo
+spec:
+  type: ClusterIP   # internal only, never exposed
+  selector: { app: redis }
+  ports:
+    - port: 6379
+      targetPort: 6379
