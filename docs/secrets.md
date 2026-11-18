@@ -1,7 +1,7 @@
 # Secrets management
 
 - **Owner:** Suvethica (with Navod for security review, Dumindu for CI, Dulieka for cloud)
-- **Status:** v3 (Day 3). Staging follows [ADR 0002 v2](decisions/0002-cloud-platform.md): **one Oracle Cloud free VM with Docker Compose** (proposed, waiting for the lead). Database: **PostgreSQL** (lead decision, replaces MongoDB). The earlier AWS plan is kept in section 10 in case the decision changes.
+- **Status:** v4 (Day 5). Staging follows [ADR 0002 v3](decisions/0002-cloud-platform.md): **k3s (Kubernetes) on Oracle Cloud free VMs + Supabase PostgreSQL** (proposed, waiting for the lead). Earlier options are kept in section 10.
 
 ## 1. Rules
 
@@ -14,25 +14,30 @@
 
 ## 2. Secret inventory
 
-| Variable | Used by | Secret? | Local (dev) | Staging (VM) |
+| Variable | Used by | Secret? | Local (dev) | Staging (k3s) |
 |---|---|---|---|---|
-| `NODE_ENV` | api, web | no | `.env` | VM `.env` |
-| `API_PORT` | api | no | `.env` | VM `.env` |
-| `APP_URL` | api | no | `.env` | VM `.env` |
-| `CORS_ORIGIN` | api | no | `.env` | VM `.env` |
-| `LOG_LEVEL` | api | no | `.env` | VM `.env` |
-| `DATABASE_URL` | api | **yes** (DB password) | `.env` (local Postgres, dev password) | VM `.env` (secret) |
-| `POSTGRES_USER`, `POSTGRES_DB` | postgres container | no | `.env` | VM `.env` |
-| `POSTGRES_PASSWORD` | postgres container | **yes** | `.env` (dev only) | VM `.env` (secret) |
-| `REDIS_URL` | api | **yes** if it has a password | `.env` (local Redis) | VM `.env` (secret) |
-| `JWT_ACCESS_SECRET` | api | **yes** | `.env` (generate your own) | VM `.env` (secret) |
-| `JWT_REFRESH_SECRET` | api | **yes** | `.env` (generate your own) | VM `.env` (secret) |
-| `JWT_ACCESS_EXPIRES_IN`, `JWT_REFRESH_EXPIRES_IN` | api | no | `.env` | VM `.env` |
-| `SMTP_HOST`, `SMTP_PORT`, `MAIL_FROM` | api | no | `.env` | VM `.env` |
-| `SMTP_USER`, `SMTP_PASS` | api | **yes** | `.env` (test inbox, e.g. Mailpit) | VM `.env` (secret) |
-| `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT` | api | no | `.env` | VM `.env` |
-| `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | api | **yes** | `.env` (local MinIO only) | VM `.env` (secret), only if object storage needs keys |
+| `NODE_ENV` | api, web | no | `.env` | ConfigMap `api-config` (`production`) |
+| `API_PORT` | api | no | `.env` | ConfigMap `api-config` |
+| `APP_URL` | api | no | `.env` | ConfigMap `api-config` |
+| `CORS_ORIGIN` | api | no | `.env` | ConfigMap `api-config` |
+| `LOG_LEVEL` | api | no | `.env` | ConfigMap `api-config` |
+| `DATABASE_URL` | api | **yes** (DB password) | `.env` (local Postgres) | Secret `api-secrets`: Supabase **pooler** URL |
+| `DATABASE_DIRECT_URL` | migrations only | **yes** | `.env` (same as `DATABASE_URL`) | Secret `api-secrets`: Supabase **direct** URL (migrations need it, the pooler does not support them) |
+| `POSTGRES_USER`, `POSTGRES_DB` | local postgres container | no | `.env` | not used (Supabase) |
+| `POSTGRES_PASSWORD` | local postgres container | **yes** (dev only) | `.env` | not used (Supabase) |
+| `SUPABASE_URL` | api | no | `.env` (empty if not used) | ConfigMap `api-config` |
+| `SUPABASE_SERVICE_ROLE_KEY` | api only, if it uses the Supabase client | **yes**: full database access, bypasses RLS | `.env` (empty if not used) | Secret `api-secrets`. **Never** in `web`, never `NEXT_PUBLIC_` |
+| `REDIS_URL` | api | **yes** if it has a password | `.env` (local Redis) | Secret `api-secrets` (in-cluster `redis://redis:6379`) |
+| `JWT_ACCESS_SECRET` | api | **yes** | `.env` (generate your own) | Secret `api-secrets` |
+| `JWT_REFRESH_SECRET` | api | **yes** | `.env` (generate your own) | Secret `api-secrets` |
+| `JWT_ACCESS_EXPIRES_IN`, `JWT_REFRESH_EXPIRES_IN` | api | no | `.env` | ConfigMap `api-config` |
+| `SMTP_HOST`, `SMTP_PORT`, `MAIL_FROM` | api | no | `.env` | ConfigMap `api-config` |
+| `SMTP_USER`, `SMTP_PASS` | api | **yes** | `.env` (test inbox, e.g. Mailpit) | Secret `api-secrets` |
+| `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT` | api | no | `.env` | ConfigMap `api-config` |
+| `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | api | **yes** | `.env` (local MinIO only) | Secret `api-secrets` (object storage keys) |
 | `NEXT_PUBLIC_API_URL` | web (browser) | no | `.env` | build argument per environment |
+
+The Supabase **anon** key is not used: Supabase is the database only (ADR 0002 assumption A1). If we start using Supabase Auth or Storage, add it here first.
 
 Adding a variable: add it to `.env.example` and to this table **in the same PR**, and say in the PR whether it is a secret.
 
@@ -48,40 +53,53 @@ openssl rand -hex 32   # and a different one for JWT_REFRESH_SECRET
 - Check `.env` is ignored before your first commit: `git check-ignore .env` must print `.env`.
 - Never share your `.env` file in chat. Share only variable **names**.
 
-## 4. Staging (Oracle VM + Docker Compose)
+## 4. Staging (Kubernetes Secrets on k3s)
 
-**Store:** one env file **on the VM only**: `/opt/remotebpo/.env`
+**Store:** Kubernetes Secret **`api-secrets`** in namespace `remotebpo`. Non-secret settings are in ConfigMap `api-config` (`infra/k8s/base/api-config.yaml`).
+The API Deployment loads both with `envFrom` (already in `infra/k8s/base/api.yaml`).
 
 | Rule | How |
 |---|---|
-| Not in Git or images | the file exists only on the VM. Compose reads it with `env_file:` at start-up |
-| Only the deploy user can read it | owner `deploy`, permissions `600` (`chmod 600 /opt/remotebpo/.env`) |
-| Safe server access | SSH with keys only (no passwords), SSH open only to team IPs (Navod reviews the security list) |
-| Not lost if the VM is lost | the real values are also kept in the team password manager, owned by DevOps |
-| Separate from local | staging gets its **own** JWT secrets and its **own** database user and password |
+| Not in Git or images | `api-secrets` is **created by the deploy pipeline** from GitHub Actions secrets. No Secret YAML with real values is ever committed |
+| Encrypted on disk | k3s started with `--secrets-encryption` (Secrets are only base64 in YAML, not encrypted, without it) |
+| Only who needs it can read it | the CI service account can manage Secrets in `remotebpo` only. Team members do not need `get secrets`. Pods outside `api` do not mount `api-secrets` |
+| Not shown by mistake | never run `kubectl get secret api-secrets -o yaml` while sharing a screen. Check names only: `kubectl get secrets -n remotebpo` |
+| Not lost if the cluster is lost | the real values live in GitHub Actions secrets (source of truth). A rebuilt cluster gets them on the next deploy |
+| Separate from local | staging has its **own** JWT secrets and its **own** Supabase project and database password |
 
-**Updating a secret on staging:**
+**How the pipeline creates it** (Dumindu's deploy job):
 
 ```bash
-ssh deploy@<vm-ip>
-nano /opt/remotebpo/.env          # change the value
-docker compose up -d              # restart containers so they read the new value
+kubectl -n remotebpo create secret generic api-secrets \
+  --from-literal=DATABASE_URL="$DATABASE_URL" \
+  --from-literal=DATABASE_DIRECT_URL="$DATABASE_DIRECT_URL" \
+  --from-literal=JWT_ACCESS_SECRET="$JWT_ACCESS_SECRET" \
+  --from-literal=JWT_REFRESH_SECRET="$JWT_REFRESH_SECRET" \
+  --from-literal=REDIS_URL="$REDIS_URL" \
+  --from-literal=SMTP_USER="$SMTP_USER" --from-literal=SMTP_PASS="$SMTP_PASS" \
+  --dry-run=client -o yaml | kubectl apply -f -
 ```
 
-**PostgreSQL:** the app connects with its own user (`remotebpo_app`) that can use **only** the app database, not the `postgres` superuser.
-If Postgres runs in Docker Compose on the VM, port `5432` is **not** published to the internet (internal Docker network only).
-If we use a managed Postgres instead, it must require SSL (`?sslmode=require`) and allow only the VM's IP.
+`--dry-run=client -o yaml | kubectl apply` creates it the first time and updates it after. The YAML only goes through the pipe, never into a file or the log.
+
+**Updating a secret:** change it in GitHub (**Settings → Environments → staging**), re-run the deploy, then
+`kubectl -n remotebpo rollout restart deployment/api` (pods read env variables only at start-up).
+
+**Supabase database:**
+- `DATABASE_URL` uses the **connection pooler** (port `6543`) so many API pods share a few database connections. Migrations use `DATABASE_DIRECT_URL`.
+- Both require SSL (`sslmode=require`). Use a strong generated database password.
+- If our plan supports network restrictions, allow only the cluster's outgoing IP.
 
 **`NEXT_PUBLIC_*` values** are not secrets. They are passed as build arguments when the web image is built.
 
 ## 5. CI/CD (GitHub Actions)
 
-- CI deploys to the VM over **SSH**. GitHub Actions **environment** `staging` holds:
-  `STAGING_SSH_HOST`, `STAGING_SSH_USER`, `STAGING_SSH_KEY` (a deploy-only key), `STAGING_SSH_KNOWN_HOSTS`.
-- CI **never** writes or prints the app secrets: it only pulls the new images and runs `docker compose up -d`.
-  The app secrets stay in `/opt/remotebpo/.env`.
-- Workflows print no secrets (`::add-mask::` for anything sensitive, never `echo` a secret).
+- GitHub Actions **environment** `staging` holds the app secrets above and `KUBECONFIG_STAGING`:
+  a kubeconfig for a **deploy-only service account** limited to the `remotebpo` namespace (not the k3s admin kubeconfig).
+- The workflow writes the kubeconfig to a temporary file with permissions `600` and deletes it at the end.
+- Workflows print no secrets (`::add-mask::` for anything sensitive, never `echo` a secret, no `set -x` in deploy steps).
 - Pull requests from forks do not get secrets (GitHub default; keep it that way).
+- Only the `main` branch can deploy to `staging` (environment protection rule).
 
 ## 6. Secret scanning
 
@@ -91,8 +109,8 @@ If we use a managed Postgres instead, it must require SSL (`?sslmode=require`) a
 
 ## 7. If a secret leaks
 
-1. **Rotate it now**: create a new value (new JWT secret, new DB password, new SMTP password) and update `/opt/remotebpo/.env` on the VM (or your local `.env`).
-2. Redeploy so services use the new value. (A new JWT secret signs everyone out: expected.)
+1. **Rotate it now**: create a new value (new JWT secret, new Supabase database password, new SMTP password), update it in GitHub Actions secrets (or your local `.env`).
+2. Re-run the deploy and `kubectl rollout restart deployment/api` so pods use the new value. (A new JWT secret signs everyone out: expected.)
 3. Remove it from the code in a PR. It stays in Git history, which is why step 1 comes first.
 4. Tell the team channel and Navod: what leaked, when, and what was rotated.
 5. Check logs for misuse while it was exposed.
@@ -102,19 +120,19 @@ If we use a managed Postgres instead, it must require SSL (`?sslmode=require`) a
 | Secret | Rotate |
 |---|---|
 | JWT secrets | on any suspected leak, and before production launch |
-| Database user password | every 90 days, or when someone leaves the project |
+| Supabase database password | every 90 days, or when someone leaves the project (reset in Supabase: Project Settings → Database) |
+| `SUPABASE_SERVICE_ROLE_KEY` (if used) | on any suspected leak |
+| `KUBECONFIG_STAGING` service account token | when someone leaves the DevOps team |
 | SMTP password | when the provider or a team member changes |
 
 ## 9. Open items
 
-- [ ] Lead approves ADR 0002 v2 (Oracle VM). If it changes, update section 4.
-- [ ] Navod reviews this document, the VM security list and SSH access.
-- [ ] Dumindu adds the SSH deploy step and the `staging` environment secrets when staging deploy starts (Cycle 4).
-- [ ] Choose the team password manager for the staging values (e.g. Bitwarden free organisation).
+- [ ] Lead confirms ADR 0002 v3 (k3s + Supabase). If it changes, update sections 2, 4 and 5.
+- [ ] Dulieka: k3s installed with `--secrets-encryption`, deploy-only service account for CI.
+- [ ] Dumindu: deploy job creates `api-secrets` (section 4) and uses the `staging` environment.
+- [ ] Navod reviews this document, the Kubernetes Secret access (RBAC) and the Supabase key handling.
 
-## 10. If we move to AWS later (paid option, ADR 0002 option D)
+## 10. Earlier options (kept for reference)
 
-- Store secrets in **AWS SSM Parameter Store** (SecureString), one per secret: `/remotebpo/<env>/<VAR>`.
-- The ECS task definition injects them at start-up with `secrets` / `valueFrom`. Nothing in images or Git.
-- Task execution role: `ssm:GetParameters` on `/remotebpo/<env>/*` + `kms:Decrypt` only. Task role: S3 bucket access only.
-- GitHub Actions deploys with **OIDC** (no stored AWS keys).
+- **Single VM + Docker Compose (ADR v2):** secrets in `/opt/remotebpo/.env` on the VM, owner `deploy`, permissions `600`, SSH key-only access.
+- **AWS (ADR option E):** AWS SSM Parameter Store (SecureString) per secret, injected by the ECS task definition (`valueFrom`), GitHub Actions deploys with OIDC.
