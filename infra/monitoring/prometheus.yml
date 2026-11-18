@@ -11,3 +11,8 @@ scrape_configs:
     metrics_path: /metrics          # needs METRICS_ENABLED=true on the api
     static_configs:
       - targets: ['api:5000']       # internal Docker network only, never public
+
+  # Later: PostgreSQL metrics (connections, cache hit, slow queries) via postgres_exporter
+  # - job_name: postgres
+  #   static_configs:
+  #     - targets: ['postgres-exporter:9187']

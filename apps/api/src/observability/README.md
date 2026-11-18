@@ -19,7 +19,7 @@ const { logger, requestLogger, healthRouter } = require('./observability');
 
 app.use(requestLogger());                 // first, before routes
 app.use(healthRouter({
-  mongo: async () => mongoose.connection.readyState === 1,
+  db: async () => (await pool.query('SELECT 1')).rowCount === 1,   // pg Pool (or prisma.$queryRaw`SELECT 1`)
   redis: async () => (await redis.ping()) === 'PONG',
 }));
 

@@ -100,11 +100,11 @@ test('logs 5xx as error', async () => {
 
 test('logger redacts secret fields in normal log calls', () => {
   const { logger, lines } = captureLogger();
-  logger.info({ user: { password: 'x1', token: 't1', email: 'a@b.c' }, candidateId: '665f' }, 'profile updated');
+  logger.info({ user: { password: 'x1', token: 't1', email: 'a@b.c' }, candidateId: '3f6c9b2e' }, 'profile updated');
   assert.equal(lines[0].user.password, '[REDACTED]');
   assert.equal(lines[0].user.token, '[REDACTED]');
   assert.equal(lines[0].user.email, '[REDACTED]');
-  assert.equal(lines[0].candidateId, '665f');
+  assert.equal(lines[0].candidateId, '3f6c9b2e');
 });
 
 test('/health returns ok and is logged at debug', async () => {
@@ -119,10 +119,10 @@ test('/health returns ok and is logged at debug', async () => {
 
 test('/ready returns 200 when all checks pass and 503 when one fails', async () => {
   const { logger } = captureLogger();
-  const ok = await start(buildApp(logger, { mongo: async () => true, redis: async () => true }));
+  const ok = await start(buildApp(logger, { db: async () => true, redis: async () => true }));
   const bad = await start(
     buildApp(logger, {
-      mongo: async () => true,
+      db: async () => true,
       redis: async () => {
         throw new Error('ECONNREFUSED');
       },
@@ -134,7 +134,7 @@ test('/ready returns 200 when all checks pass and 503 when one fails', async () 
   bad.server.close();
 
   assert.equal(r1.status, 200);
-  assert.deepEqual(await r1.json(), { status: 'ready', checks: { mongo: 'up', redis: 'up' } });
+  assert.deepEqual(await r1.json(), { status: 'ready', checks: { db: 'up', redis: 'up' } });
   assert.equal(r2.status, 503);
-  assert.deepEqual(await r2.json(), { status: 'not ready', checks: { mongo: 'up', redis: 'down' } });
+  assert.deepEqual(await r2.json(), { status: 'not ready', checks: { db: 'up', redis: 'down' } });
 });

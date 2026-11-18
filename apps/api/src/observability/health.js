@@ -5,7 +5,7 @@ const express = require('express');
 
 /**
  * @param {object} [checks] name -> async function that returns true when healthy
- *   e.g. { mongo: async () => mongoose.connection.readyState === 1 }
+ *   e.g. { db: async () => (await pool.query('SELECT 1')).rowCount === 1 }
  */
 function healthRouter(checks = {}) {
   const router = express.Router();
