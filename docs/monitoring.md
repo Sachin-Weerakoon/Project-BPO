@@ -9,7 +9,7 @@
 | Endpoint | Checks | Response |
 |---|---|---|
 | `GET /health` | the process is running (no DB call) | `200 {"status":"ok"}` |
-| `GET /ready` | MongoDB and Redis connections | `200 {"status":"ready"}` or `503 {"status":"not ready","checks":{"mongo":"down"}}` |
+| `GET /ready` | PostgreSQL (`SELECT 1`) and Redis connections | `200 {"status":"ready"}` or `503 {"status":"not ready","checks":{"db":"down"}}` |
 
 - No secrets, versions of libraries, or hostnames in the response. `version` (git commit short SHA) is allowed.
 - Not logged at `info` (too noisy): health requests log at `debug`.
@@ -27,6 +27,10 @@ services:
     restart: unless-stopped
   web:
     restart: unless-stopped
+  postgres:
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 30s
   redis:
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -48,7 +52,7 @@ services:
 | Memory | > 85% | Oracle Cloud monitoring / `docker stats` |
 | Disk | > 80% | Oracle Cloud monitoring (logs + images fill disks) |
 | TLS certificate | < 14 days left | uptime tool certificate check |
-| MongoDB Atlas | storage > 400 MB of 512 MB, connections | Atlas free alerts |
+| PostgreSQL | disk use, connections > 80% of `max_connections`, slow queries > 1s | `pg_stat_activity`, `log_min_duration_statement = 1000`, later `postgres_exporter` |
 
 ## 5. App metrics (later, after MVP)
 

@@ -31,7 +31,7 @@ Request logs also have:
 | `path` | `/api/v1/candidates` | route path only, **no query string** |
 | `status` | `201` | |
 | `durationMs` | `42` | |
-| `userId` | `665f…` | only the ID, never name or email. Empty if not logged in |
+| `userId` | `3f6c…` (UUID) | only the ID, never name or email. Empty if not logged in |
 | `role` | `recruiter` | |
 
 Errors also have `err.type`, `err.message` and `err.stack` (stack **not** in production responses, only in logs).
@@ -39,7 +39,7 @@ Errors also have `err.type`, `err.message` and `err.stack` (stack **not** in pro
 Example:
 
 ```json
-{"time":"2026-11-16T17:05:12.345Z","level":"info","service":"api","env":"staging","msg":"request completed","requestId":"5f1c2a9e-1b7d-4c1e-9a43-0c2d1e7f9b10","method":"POST","path":"/api/v1/candidates","status":201,"durationMs":42,"userId":"665f0c1e2a","role":"recruiter"}
+{"time":"2026-11-16T17:05:12.345Z","level":"info","service":"api","env":"staging","msg":"request completed","requestId":"5f1c2a9e-1b7d-4c1e-9a43-0c2d1e7f9b10","method":"POST","path":"/api/v1/candidates","status":201,"durationMs":42,"userId":"3f6c9b2e-8a1d-4f57-b0c4-2e9d7a51c8f3","role":"recruiter"}
 ```
 
 ## 3. Levels
@@ -65,7 +65,8 @@ Set with `LOG_LEVEL` (default `info`).
 - JWTs, cookies, `Authorization` headers, API keys, any value from `.env`
 - Full request or response **bodies**
 - Personal data: names, emails, phone numbers, addresses, NIC/ID numbers, CV contents, salary
-- `MONGODB_URI` or any connection string
+- `DATABASE_URL` or any connection string
+- SQL query **parameters** (they can hold personal data). Log the query name or table, not the values
 
 pino `redact` must cover at least:
 
@@ -74,7 +75,7 @@ redact: ['req.headers.authorization', 'req.headers.cookie', 'res.headers["set-co
          '*.password', '*.token', '*.accessToken', '*.refreshToken', '*.email', '*.phone']
 ```
 
-Log **IDs**, not people: `candidateId: "665f…"`, not the candidate's name.
+Log **IDs**, not people: `candidateId: "3f6c…"`, not the candidate's name.
 
 ## 5. Where logs go
 
