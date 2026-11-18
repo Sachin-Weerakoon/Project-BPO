@@ -1,5 +1,5 @@
-# Placeholder: Prometheus scrape config for staging (docs/monitoring.md section 5).
-# Not used yet. Turn on after MVP with: docker compose --profile monitoring up -d
+# Placeholder: Prometheus scrape config for staging on k3s (docs/monitoring.md section 5, ADR 0002 v3).
+# Not used yet (after MVP). Prometheus runs inside the cluster and finds api pods itself.
 global:
   scrape_interval: 30s
 
@@ -7,12 +7,29 @@ rule_files:
   - /etc/prometheus/alert-rules.yml
 
 scrape_configs:
+  # API pods, found through Kubernetes service discovery (no fixed targets).
+  # Needs METRICS_ENABLED=true on the api. /metrics is never in the ingress.
   - job_name: api
-    metrics_path: /metrics          # needs METRICS_ENABLED=true on the api
-    static_configs:
-      - targets: ['api:5000']       # internal Docker network only, never public
+    metrics_path: /metrics
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names: [remotebpo]
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        regex: api
+        action: keep
+      - source_labels: [__meta_kubernetes_pod_container_port_number]
+        regex: "5000"
+        action: keep
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod
 
-  # Later: PostgreSQL metrics (connections, cache hit, slow queries) via postgres_exporter
-  # - job_name: postgres
+  # Local Docker Compose only (docker-compose.monitoring.yml): uncomment and remove the job above
+  # - job_name: api
+  #   metrics_path: /metrics
   #   static_configs:
-  #     - targets: ['postgres-exporter:9187']
+  #     - targets: ['api:5000']
+
+# Database: Supabase (managed). Use the Supabase dashboard (Reports, Query Performance).
+# A postgres_exporter is only needed if we self-host PostgreSQL later.

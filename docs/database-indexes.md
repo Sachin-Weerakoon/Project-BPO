@@ -1,7 +1,7 @@
 # PostgreSQL index guide (for the database tables)
 
 - **Owner:** Sathsarani (models and migrations), Suvethica (support, Days 3-4)
-- **Status:** v2. The lead moved the database from MongoDB to **PostgreSQL** for scalability.
+- **Status:** v3. The lead moved the database from MongoDB to **PostgreSQL** for scalability. Staging uses **Supabase** (managed PostgreSQL, ADR 0002 v3).
   Based on SRS Part C. Table and column names are suggestions: change them to match the real schema.
 - SQL below is plain PostgreSQL, so it works with any tool (Prisma, Sequelize, Knex, TypeORM). Put it in **migrations**, never run it by hand on staging.
 
@@ -15,6 +15,14 @@
 6. Don't add indexes "just in case": each index slows inserts and updates and uses disk.
 7. Check slow queries with `EXPLAIN ANALYZE`: we want `Index Scan` / `Bitmap Index Scan`, not `Seq Scan` on big tables.
 8. On tables that already have data in staging or production, create indexes with `CREATE INDEX CONCURRENTLY` so the table is not locked.
+   It cannot run inside a transaction, so put it in its own migration (Prisma, Knex and others wrap migrations in a transaction by default).
+
+## Supabase notes
+
+- Run migrations with **`DATABASE_DIRECT_URL`** (direct connection). The pooler URL (`DATABASE_URL`, port 6543) is for the app, and it does not support migrations.
+- Supabase Free has a database size limit: every index uses space, which is one more reason for rule 6.
+- Slow queries and index usage are in the Supabase dashboard (**Query Performance**). Unused indexes can be found with:
+  `SELECT relname, indexrelname, idx_scan FROM pg_stat_user_indexes WHERE idx_scan = 0;`
 
 ## 2. Suggested indexes
 

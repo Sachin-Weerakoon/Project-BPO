@@ -26,11 +26,11 @@ async function start(app) {
   });
 }
 
-function buildApp(logger, checks) {
+function buildApp(logger, checks = { db: async () => true }) {
   const app = express();
   app.use(express.json());
   app.use(requestLogger(logger));
-  app.use(healthRouter(checks));
+  app.use(healthRouter(checks, { logger }));
   app.post('/api/v1/login', (req, res) => res.status(401).json({ error: 'invalid' }));
   app.get('/api/v1/jobs', (req, res) => res.json([]));
   app.get('/boom', () => {
@@ -137,4 +137,16 @@ test('/ready returns 200 when all checks pass and 503 when one fails', async () 
   assert.deepEqual(await r1.json(), { status: 'ready', checks: { db: 'up', redis: 'up' } });
   assert.equal(r2.status, 503);
   assert.deepEqual(await r2.json(), { status: 'not ready', checks: { db: 'up', redis: 'down' } });
+});
+
+test('warns at startup when /ready has no checks, not when it has some', () => {
+  const none = captureLogger();
+  healthRouter({}, { logger: none.logger });
+  assert.equal(none.lines.length, 1);
+  assert.equal(none.lines[0].level, 'warn');
+  assert.match(none.lines[0].msg, /without readiness checks/);
+
+  const some = captureLogger();
+  healthRouter({ db: async () => true }, { logger: some.logger });
+  assert.equal(some.lines.length, 0);
 });

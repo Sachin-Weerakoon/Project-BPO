@@ -2,13 +2,21 @@
 
 // GET /health (process is up) and GET /ready (dependencies are up). Plan: docs/monitoring.md
 const express = require('express');
+const { logger: defaultLogger } = require('./logger');
 
 /**
  * @param {object} [checks] name -> async function that returns true when healthy
  *   e.g. { db: async () => (await pool.query('SELECT 1')).rowCount === 1 }
+ * @param {object} [options]
+ * @param {object} [options.logger] logger to use (default: shared logger)
  */
-function healthRouter(checks = {}) {
+function healthRouter(checks = {}, { logger = defaultLogger } = {}) {
   const router = express.Router();
+
+  // With no checks, /ready always returns 200. Warn so a missing DB/Redis check is noticed.
+  if (Object.keys(checks).length === 0) {
+    logger.warn('healthRouter started without readiness checks: /ready will always return 200');
+  }
   const version = process.env.GIT_SHA ? process.env.GIT_SHA.slice(0, 7) : undefined;
 
   router.get('/health', (req, res) => {

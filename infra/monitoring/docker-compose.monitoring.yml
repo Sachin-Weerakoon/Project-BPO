@@ -1,4 +1,6 @@
-# Placeholder: optional monitoring stack. Not started by default.
+# Placeholder: optional Prometheus for LOCAL testing only. Not started by default.
+# On staging (k3s) Prometheus runs inside the cluster instead (see prometheus.yml).
+# For local use, switch prometheus.yml to the static_configs job.
 # Use with the main compose file:
 #   docker compose -f docker-compose.yml -f infra/monitoring/docker-compose.monitoring.yml --profile monitoring up -d
 services:

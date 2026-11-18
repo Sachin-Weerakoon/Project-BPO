@@ -1,13 +1,21 @@
 # Monitoring placeholders
 
-Plan: [docs/monitoring.md](../../docs/monitoring.md). These files are **placeholders**: nothing here runs by default.
+Plan: [docs/monitoring.md](../../docs/monitoring.md). Staging: **k3s (Kubernetes) on Oracle Cloud + Supabase PostgreSQL** ([ADR 0002 v3](../../docs/decisions/0002-cloud-platform.md)).
+These files are **placeholders**: nothing here runs by default.
 
 | File | What |
 |---|---|
-| `prometheus.yml` | scrape config for the API `/metrics` (internal network only) |
+| `prometheus.yml` | finds api pods with Kubernetes service discovery and scrapes `/metrics` (inside the cluster only) |
 | `alert-rules.yml` | draft alerts: API down, 5xx rate > 5%, p95 > 300 ms, memory |
-| `docker-compose.monitoring.yml` | optional Prometheus container (profile `monitoring`, localhost port only) |
+| `docker-compose.monitoring.yml` | optional Prometheus for **local** testing only (profile `monitoring`, localhost port) |
 
-**CloudWatch option:** only if we move to AWS (ADR 0002 option D). Then send container logs with the `awslogs` driver and use CloudWatch alarms for the same rules.
+**Free options for staging now (no Prometheus needed):**
 
-**Free options for the Oracle VM now:** UptimeRobot for `/health`, Oracle Cloud monitoring for CPU/memory/disk, `pg_isready` health check and slow query log (`log_min_duration_statement`) for PostgreSQL.
+| What | Tool |
+|---|---|
+| Site up | UptimeRobot on the public `/health` |
+| Pods and nodes | `kubectl top pods` / `kubectl top nodes` (k3s metrics-server), `kubectl get pods` for restarts |
+| Database | Supabase dashboard: connections, slow queries, database size |
+| Servers | Oracle Cloud monitoring: CPU, memory, disk |
+
+**CloudWatch option:** only if we move to AWS (ADR 0002 option E). Then send container logs to CloudWatch and use CloudWatch alarms for the same rules.

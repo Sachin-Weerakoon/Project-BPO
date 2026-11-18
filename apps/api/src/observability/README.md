@@ -18,6 +18,7 @@ npm install prom-client             # only if METRICS_ENABLED is used
 const { logger, requestLogger, healthRouter } = require('./observability');
 
 app.use(requestLogger());                 // first, before routes
+// Pass at least one check: with none, /ready always returns 200 (a warning is logged at startup)
 app.use(healthRouter({
   db: async () => (await pool.query('SELECT 1')).rowCount === 1,   // pg Pool (or prisma.$queryRaw`SELECT 1`)
   redis: async () => (await redis.ping()) === 'PONG',
