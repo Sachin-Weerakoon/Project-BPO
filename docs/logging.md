@@ -81,23 +81,28 @@ Log **IDs**, not people: `candidateId: "3f6c…"`, not the candidate's name.
 
 | Environment | Where | Kept for |
 |---|---|---|
-| local | terminal (pretty) | - |
-| staging (Oracle VM) | Docker `json-file` driver with rotation: `max-size: 10m`, `max-file: 5` | about 50 MB per container |
+| local | terminal (pretty), or `docker compose logs` | - |
+| staging (k3s) | stored on the node by Kubernetes and rotated by the kubelet (default 10 MB x 5 files per container) | about 50 MB per container, lost when the pod is deleted |
 
-Compose example (staging):
+Read logs on staging:
 
-```yaml
-x-logging: &default-logging
-  driver: json-file
-  options: { max-size: "10m", max-file: "5" }
-
-services:
-  api:
-    logging: *default-logging
+```bash
+kubectl logs -n remotebpo -l app=api --tail=100 -f            # all api pods
+kubectl logs -n remotebpo deploy/api --previous                 # the container before a crash/restart
+kubectl logs -n remotebpo -l app=api --tail=-1 | grep <requestId>
 ```
 
-Read logs: `docker compose logs -f api` or `docker compose logs api | grep <requestId>`.
-A central log service (e.g. Grafana Loki or Better Stack) is a later step, see [monitoring.md](monitoring.md).
+Local Docker Compose (optional rotation):
+
+```yaml
+services:
+  api:
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+```
+
+Pod logs are deleted with the pod, so a central log service (e.g. Grafana Loki or Better Stack) is a later step (Days 7-8, "Centralized logs from staging"), see [monitoring.md](monitoring.md).
 
 ## 6. Checklist for a PR that adds logs
 
