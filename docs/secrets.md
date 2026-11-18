@@ -1,7 +1,7 @@
 # Secrets management
 
 - **Owner:** Suvethica (with Navod for security review, Dumindu for CI, Dulieka for cloud)
-- **Status:** v3 (Day 3). Staging follows [ADR 0002 v2](decisions/0002-cloud-platform.md): **one Oracle Cloud free VM with Docker Compose + MongoDB Atlas Free** (proposed, waiting for the lead). The earlier AWS plan is kept in section 10 in case the decision changes.
+- **Status:** v3 (Day 3). Staging follows [ADR 0002 v2](decisions/0002-cloud-platform.md): **one Oracle Cloud free VM with Docker Compose** (proposed, waiting for the lead). Database: **PostgreSQL** (lead decision, replaces MongoDB). The earlier AWS plan is kept in section 10 in case the decision changes.
 
 ## 1. Rules
 
@@ -21,7 +21,9 @@
 | `APP_URL` | api | no | `.env` | VM `.env` |
 | `CORS_ORIGIN` | api | no | `.env` | VM `.env` |
 | `LOG_LEVEL` | api | no | `.env` | VM `.env` |
-| `MONGODB_URI` | api | **yes** (DB password) | `.env` (local Mongo, no password) | VM `.env` (secret) |
+| `DATABASE_URL` | api | **yes** (DB password) | `.env` (local Postgres, dev password) | VM `.env` (secret) |
+| `POSTGRES_USER`, `POSTGRES_DB` | postgres container | no | `.env` | VM `.env` |
+| `POSTGRES_PASSWORD` | postgres container | **yes** | `.env` (dev only) | VM `.env` (secret) |
 | `REDIS_URL` | api | **yes** if it has a password | `.env` (local Redis) | VM `.env` (secret) |
 | `JWT_ACCESS_SECRET` | api | **yes** | `.env` (generate your own) | VM `.env` (secret) |
 | `JWT_REFRESH_SECRET` | api | **yes** | `.env` (generate your own) | VM `.env` (secret) |
@@ -56,7 +58,7 @@ openssl rand -hex 32   # and a different one for JWT_REFRESH_SECRET
 | Only the deploy user can read it | owner `deploy`, permissions `600` (`chmod 600 /opt/remotebpo/.env`) |
 | Safe server access | SSH with keys only (no passwords), SSH open only to team IPs (Navod reviews the security list) |
 | Not lost if the VM is lost | the real values are also kept in the team password manager, owned by DevOps |
-| Separate from local | staging gets its **own** JWT secrets and its **own** Atlas database user |
+| Separate from local | staging gets its **own** JWT secrets and its **own** database user and password |
 
 **Updating a secret on staging:**
 
@@ -66,8 +68,9 @@ nano /opt/remotebpo/.env          # change the value
 docker compose up -d              # restart containers so they read the new value
 ```
 
-**MongoDB Atlas:** a separate database user for staging with access to the staging database only.
-The Atlas IP access list allows **only the VM's public IP**.
+**PostgreSQL:** the app connects with its own user (`remotebpo_app`) that can use **only** the app database, not the `postgres` superuser.
+If Postgres runs in Docker Compose on the VM, port `5432` is **not** published to the internet (internal Docker network only).
+If we use a managed Postgres instead, it must require SSL (`?sslmode=require`) and allow only the VM's IP.
 
 **`NEXT_PUBLIC_*` values** are not secrets. They are passed as build arguments when the web image is built.
 
@@ -99,7 +102,7 @@ The Atlas IP access list allows **only the VM's public IP**.
 | Secret | Rotate |
 |---|---|
 | JWT secrets | on any suspected leak, and before production launch |
-| MongoDB user password | every 90 days, or when someone leaves the project |
+| Database user password | every 90 days, or when someone leaves the project |
 | SMTP password | when the provider or a team member changes |
 
 ## 9. Open items

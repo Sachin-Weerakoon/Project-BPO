@@ -11,7 +11,7 @@ test; employers post jobs and manage applications; admins verify companies and m
 ```text
 apps/
   web/        Next.js 15 frontend (App Router, Tailwind, shadcn/ui)
-  api/        Node.js + Express backend (MongoDB, Redis)
+  api/        Node.js + Express backend (PostgreSQL, Redis)
 infra/        Docker, Compose profiles, deployment and cloud files
 docs/
   runbooks/   operations runbooks (deploy, backup/restore, incidents)
@@ -29,7 +29,7 @@ docker-compose.yml   local stack (added by DevOps)
 |---|---|
 | Frontend | Next.js 15 (App Router) + React + Tailwind CSS + shadcn/ui |
 | Backend | Node.js + Express |
-| Database | MongoDB (Atlas) + Mongoose |
+| Database | PostgreSQL |
 | Cache / queue | Redis + BullMQ |
 | Auth | JWT (access + refresh), bcrypt/Argon2id |
 | Realtime | Socket.io |
@@ -63,7 +63,7 @@ Full rules: [CONTRIBUTING.md](CONTRIBUTING.md) · Secrets: [docs/secrets.md](doc
 |---|---|---|
 | Duleesha | SE | Frontend (Next.js, UI, forms) |
 | Megha | SE | Frontend, candidate flows, profile and search UI |
-| Sathsarani | SE | Backend (Express APIs, MongoDB models) |
+| Sathsarani | SE | Backend (Express APIs, database models) |
 | Dumindu | DevOps | Docker, CI/CD, local and staging environment |
 | Dulieka | DevOps | Cloud infrastructure, Kubernetes/ECS, networking |
 | Suvethica | DevOps | Repo setup, secrets, logging, monitoring, backups |
