@@ -16,7 +16,7 @@ Cluster setup steps: [k3s on Oracle runbook](../../docs/runbooks/k3s-oracle-setu
 | `network-policies.yaml` | default deny; allows ingress->web, ingress/web->api, api->redis only |
 
 ## Not in Git
-`api-secrets` (DATABASE_URL, JWT secrets, Supabase keys) is created by the deploy pipeline from
+`api-secrets` (MONGODB_URI, JWT secrets, SMTP and S3 keys) is created by the deploy pipeline from
 GitHub Actions secrets. Never commit real secrets.
 
 ## Check locally

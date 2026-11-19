@@ -7,4 +7,6 @@ data:
   NODE_ENV: "production"
   API_PORT: "5000"
   LOG_LEVEL: "info"
-  APP_URL: "https://staging.example.com"   # placeholder until we have a domain
+  REDIS_URL: "redis://redis:6379"                  # in-cluster Redis Service
+  CORS_ORIGIN: "https://staging.example.com"       # placeholder until we have a domain
+  METRICS_ENABLED: "false"
