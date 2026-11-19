@@ -1,5 +1,10 @@
 # Monitoring plan (placeholders)
 
+> **Database alignment:** this staging plan currently describes PostgreSQL/Supabase. The API
+> implementation follows MongoDB + Mongoose per [ADR 0003](decisions/0003-mongodb-data-store.md);
+> update the readiness check, local health check, and database alerts before using this plan to
+> configure staging.
+
 - **Owner:** Suvethica (DevOps)
 - **Status:** v2 (Day 5). Plan for staging on **k3s (Kubernetes) on Oracle Cloud + Supabase PostgreSQL** ([ADR 0002 v3](decisions/0002-cloud-platform.md)). Items marked **later** wait for the API and the staging cluster.
 - **Related:** [logging.md](logging.md)

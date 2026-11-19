@@ -1,5 +1,10 @@
 # PostgreSQL index guide (for the database tables)
 
+> **Not applicable to the current API baseline:** the API follows MongoDB + Mongoose per
+> [ADR 0003](decisions/0003-mongodb-data-store.md). This PostgreSQL/Supabase guide is retained
+> as historical infrastructure work; do not apply its SQL or rely on it for application indexes
+> unless the product lead explicitly restores PostgreSQL as the selected data store.
+
 - **Owner:** Sathsarani (models and migrations), Suvethica (support, Days 3-4)
 - **Status:** v3. The lead moved the database from MongoDB to **PostgreSQL** for scalability. Staging uses **Supabase** (managed PostgreSQL, ADR 0002 v3).
   Based on SRS Part C. Table and column names are suggestions: change them to match the real schema.

@@ -11,7 +11,7 @@ test; employers post jobs and manage applications; admins verify companies and m
 ```text
 apps/
   web/        Next.js 15 frontend (App Router, Tailwind, shadcn/ui)
-  api/        Node.js + Express backend (PostgreSQL, Redis)
+  api/        Node.js + Express backend (MongoDB, Redis)
 infra/        Docker, Compose profiles, deployment and cloud files
 docs/
   runbooks/   operations runbooks (deploy, backup/restore, incidents)
@@ -29,7 +29,7 @@ docker-compose.yml   local stack (added by DevOps)
 |---|---|
 | Frontend | Next.js 15 (App Router) + React + Tailwind CSS + shadcn/ui |
 | Backend | Node.js + Express |
-| Database | PostgreSQL |
+| Database | MongoDB + Mongoose |
 | Cache / queue | Redis + BullMQ |
 | Auth | JWT (access + refresh), bcrypt/Argon2id |
 | Realtime | Socket.io |

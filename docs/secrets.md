@@ -3,6 +3,11 @@
 - **Owner:** Suvethica (with Navod for security review, Dumindu for CI, Dulieka for cloud)
 - **Status:** v4 (Day 5). Staging follows [ADR 0002 v3](decisions/0002-cloud-platform.md): **k3s (Kubernetes) on Oracle Cloud free VMs + Supabase PostgreSQL** (proposed, waiting for the lead). Earlier options are kept in section 10.
 
+> **Implementation alignment:** the API branch follows the SRS/FRS MongoDB baseline recorded in
+> [ADR 0003](decisions/0003-mongodb-data-store.md). This PostgreSQL/Supabase secret inventory is
+> not valid for the current API implementation or staging until the product lead resolves the
+> database decision and this document, Kubernetes secrets, and backup jobs are updated together. Earlier options are kept in section 10.
+
 ## 1. Rules
 
 1. Real secrets are **never** committed, written in code, put in Docker images, or printed in logs.

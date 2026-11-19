@@ -35,7 +35,7 @@ yarn-error.log*
 
 # Local data and Docker volumes
 data/
-postgres-data/
+mongo-data/
 redis-data/
 backups/
 
