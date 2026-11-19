@@ -1,0 +1,44 @@
+# Example only (Dulieka owns infra/k8s): daily backup CronJob for k3s. See docs/runbooks/backup-restore.md
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pg-backup
+  namespace: remotebpo
+spec:
+  schedule: "30 20 * * *"            # 20:30 UTC = 02:00 Sri Lanka time, quiet hours
+  concurrencyPolicy: Forbid          # never two backups at the same time
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3          # keep failed jobs so we can read their logs
+  jobTemplate:
+    spec:
+      backoffLimit: 2                # retry twice, then the Job is marked failed (alert)
+      activeDeadlineSeconds: 1800    # stop a stuck backup after 30 min
+      template:
+        metadata:
+          labels: { app: pg-backup }
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 70
+          containers:
+            - name: pg-backup
+              image: ghcr.io/sachin-weerakoon/project-bpo-backup:latest   # placeholder until CI builds it
+              envFrom:
+                - secretRef: { name: backup-secrets }   # created by the pipeline, never committed
+              env:
+                - name: BACKUP_DEST
+                  value: s3://remotebpo-backups/staging
+                - name: HOME
+                  value: /tmp
+              resources:
+                requests: { cpu: 50m, memory: 64Mi }
+                limits: { cpu: 500m, memory: 256Mi }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+              volumeMounts:
+                - { name: tmp, mountPath: /tmp }
+          volumes:
+            - name: tmp
+              emptyDir: { sizeLimit: 2Gi }   # encrypted file is written here before upload
