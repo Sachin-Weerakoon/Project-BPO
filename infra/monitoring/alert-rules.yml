@@ -1,0 +1,30 @@
+# Placeholder alert rules (draft). Final alerts: Days 11-12.
+groups:
+  - name: api
+    rules:
+      - alert: ApiDown
+        expr: up{job="api"} == 0
+        for: 2m
+        labels: { severity: critical }
+        annotations: { summary: "API is down for 2 minutes" }
+
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_request_duration_seconds_count{status=~"5.."}[5m]))
+            / sum(rate(http_request_duration_seconds_count[5m])) > 0.05
+        for: 5m
+        labels: { severity: warning }
+        annotations: { summary: "More than 5% of API requests return 5xx" }
+
+      - alert: SlowApi
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m]))) > 0.3
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "API p95 above 300 ms (SRS D.1)" }
+
+      - alert: HighMemory
+        expr: process_resident_memory_bytes{job="api"} > 400e6
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "API memory above 400 MB" }

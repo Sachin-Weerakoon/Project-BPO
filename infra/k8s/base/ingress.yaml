@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: remotebpo
+  namespace: remotebpo
+spec:
+  ingressClassName: traefik   # k3s ships with Traefik
+  rules:
+    - host: staging.example.com   # placeholder until we have a domain
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service: { name: api, port: { number: 5000 } }
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: web, port: { number: 3000 } }
+  # TLS (Let's Encrypt via cert-manager) to be added once the domain is known.
