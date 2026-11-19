@@ -87,7 +87,11 @@ kubectl get pods -n kube-system             # traefik, coredns, metrics-server R
 
 ## 9. Later
 - cert-manager + Let's Encrypt for HTTPS once the domain is known
-- Backup CronJob (encrypted pg_dump) and restore test ([ADR 0002](../decisions/0002-cloud-platform.md))
+- Backup CronJob: `infra/backup/cronjob.example.yaml` (Suvethica, runbook: [backup-restore.md](backup-restore.md)).
+  Before enabling: create the Object Storage bucket + Customer Secret Keys, set `S3_ENDPOINT`,
+  create `backup-secrets`, and check whether `DATABASE_DIRECT_URL` must be the Supabase
+  **session pooler** URL (IPv4, port 5432) instead of the direct (IPv6) address.
+  When egress network policies are added, allow pg-backup -> DNS, Supabase, Object Storage.
 - Uptime check on `/health`, alerts (with Suvethica)
 
 ## 10. Teardown (end of internship)
