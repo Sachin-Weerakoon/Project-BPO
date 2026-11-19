@@ -1,3 +1,3 @@
 # Runbooks
 
-Operations runbooks (deploy, rollback, backup/restore, incidents). Owner: Suvathica.
+Operations runbooks (deploy, rollback, backup/restore, incidents). Owner: Suvethica.
