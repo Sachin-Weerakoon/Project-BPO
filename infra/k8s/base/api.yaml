@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: remotebpo
+  labels: { app: api }
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0   # never drop below the current number of pods during a deploy
+      maxSurge: 1         # start one new pod at a time
+  selector:
+    matchLabels: { app: api }
+  template:
+    metadata:
+      labels: { app: api }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+        - name: api
+          image: ghcr.io/sachin-weerakoon/project-bpo-api:latest   # placeholder until CI pushes images
+          ports:
+            - containerPort: 5000
+          envFrom:
+            - configMapRef: { name: api-config }
+            - secretRef: { name: api-secrets }   # created by the pipeline, never committed
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          livenessProbe:
+            httpGet: { path: /health, port: 5000 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+          readinessProbe:
+            httpGet: { path: /ready, port: 5000 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: remotebpo
+spec:
+  selector: { app: api }
+  ports:
+    - port: 5000
+      targetPort: 5000
