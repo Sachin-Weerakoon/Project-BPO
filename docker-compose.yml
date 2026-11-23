@@ -1,0 +1,62 @@
+
+services:
+  mongodb:
+    image: mongo:8
+    container_name: project-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-devpassword}
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --username
+        - ${MONGO_USERNAME:-admin}
+        - --password
+        - ${MONGO_PASSWORD:-devpassword}
+        - --authenticationDatabase
+        - admin
+        - --eval
+        - "db.adminCommand('ping')"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: project-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  stubs:
+    image: wiremock/wiremock:3x
+    container_name: project-stubs
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./stubs:/home/wiremock
+    command: ["--global-response-templating", "--verbose"]
+
+volumes:
+  mongo_data:
+  redis_data:
+
+networks:
+  default:
+    name: project-network

@@ -1,0 +1,28 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "/api/jobs"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "jobs": [
+        {
+          "id": "101",
+          "title": "Backend Developer",
+          "company": "ABC Technologies",
+          "location": "Colombo"
+        },
+        {
+          "id": "102",
+          "title": "Frontend Developer",
+          "company": "XYZ Solutions",
+          "location": "Remote"
+        }
+      ]
+    }
+  }
+}
