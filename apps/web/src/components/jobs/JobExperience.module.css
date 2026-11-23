@@ -1,0 +1,21 @@
+/* Purposeful UI micro-interactions; disabled for reduced-motion preferences. */
+@keyframes enterContent {
+  from { opacity: 0; transform: translateY(9px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes enterDialog {
+  from { opacity: 0; transform: translateY(12px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes enterBackdrop {
+  from { background-color: rgb(15 23 42 / 0); }
+  to { background-color: rgb(15 23 42 / .56); }
+}
+.contentEnter { animation: enterContent 280ms cubic-bezier(.2,.75,.25,1) both; }
+.dialogEnter { animation: enterDialog 210ms cubic-bezier(.2,.75,.25,1) both; }
+.dialogEnter::backdrop { animation: enterBackdrop 210ms ease-out both; }
+.statusEnter { animation: enterContent 220ms ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .contentEnter, .dialogEnter, .statusEnter { animation: none !important; }
+  .dialogEnter::backdrop { animation: none !important; background-color: rgb(15 23 42 / .56); }
+}
