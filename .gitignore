@@ -34,9 +34,10 @@ yarn-debug.log*
 yarn-error.log*
 
 # Local data and Docker volumes
-data/
-postgres-data/
-redis-data/
+/data/
+/postgres-data/
+/mongo-data/
+/redis-data/
 backups/
 
 # Platform CLIs
