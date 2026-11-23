@@ -1,0 +1,9 @@
+import type { Job } from "../types/job";
+
+/** Fictional, local-only job listings for candidate UI development. */
+export const demoJobs: Job[] = [
+  { id: "demo-1", title: "Remote Customer Support Agent", companyName: "Sample Support Services", location: "Sri Lanka", remote: true, processType: "voice", requiredLanguages: ["English"], shift: "Night shift", timezone: "EST", employmentType: "full-time", salaryLabel: "Negotiable", postedAtLabel: "Demo listing", description: "Assist international customers with inquiries and service requests across voice channels." },
+  { id: "demo-2", title: "Data Entry Specialist", companyName: "Sample Data Operations", location: "Remote", remote: true, processType: "data-entry", requiredLanguages: ["English", "Sinhala"], shift: "Flexible", timezone: "GMT", employmentType: "part-time", salaryLabel: "Negotiable", postedAtLabel: "Demo listing", description: "Maintain accurate digital records and support structured back-office processing." },
+  { id: "demo-3", title: "Live Chat Representative", companyName: "Sample Global Support", location: "Sri Lanka", remote: true, processType: "non-voice", requiredLanguages: ["English"], shift: "Day shift", timezone: "AEST", employmentType: "contract", salaryLabel: "Negotiable", postedAtLabel: "Demo listing", description: "Respond to customer questions through live chat, email, and ticketing tools." },
+  { id: "demo-4", title: "Remote Technical Support", companyName: "Sample IT Helpdesk", location: "Remote", remote: true, processType: "technical-support", requiredLanguages: ["English", "Tamil"], shift: "Rotational", timezone: "GMT", employmentType: "full-time", salaryLabel: "Negotiable", postedAtLabel: "Demo listing", description: "Troubleshoot common technical issues and document resolutions for remote teams." },
+];
