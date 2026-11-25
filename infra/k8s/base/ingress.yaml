@@ -9,6 +9,12 @@ spec:
     - host: staging.example.com   # placeholder until we have a domain
       http:
         paths:
+          # Exact /health goes to the API, so uptime checks test the API (docs/environment-parity.md 3).
+          # /ready and /metrics stay internal (not routed).
+          - path: /health
+            pathType: Exact
+            backend:
+              service: { name: api, port: { number: 5000 } }
           - path: /api
             pathType: Prefix
             backend:
