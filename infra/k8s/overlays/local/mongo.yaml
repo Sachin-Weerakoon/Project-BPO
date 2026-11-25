@@ -1,0 +1,66 @@
+# LOCAL TESTING ONLY: throwaway MongoDB (no auth, data lost on restart). Staging uses MongoDB Atlas.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo
+  namespace: remotebpo
+  labels: { app: mongo }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: mongo }
+  template:
+    metadata:
+      labels: { app: mongo }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999    # the 'mongodb' user in the official image
+        runAsGroup: 999
+      containers:
+        - name: mongo
+          image: mongo:7   # multi-arch
+          ports:
+            - containerPort: 27017
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 1Gi }
+          readinessProbe:
+            tcpSocket: { port: 27017 }
+            periodSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - { name: data, mountPath: /data/db }
+            - { name: config, mountPath: /data/configdb }
+      volumes:
+        - { name: data, emptyDir: {} }
+        - { name: config, emptyDir: {} }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+  namespace: remotebpo
+spec:
+  selector: { app: mongo }
+  ports:
+    - port: 27017
+      targetPort: 27017
+---
+# Only the api can reach the local MongoDB (base has default-deny ingress)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-api-to-mongo
+  namespace: remotebpo
+spec:
+  podSelector:
+    matchLabels: { app: mongo }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: { app: api }
+      ports:
+        - port: 27017
