@@ -1,0 +1,56 @@
+# Log collector: one small pod that reads the logs of every pod in remotebpo through the
+# Kubernetes API and sends them to Grafana Cloud Logs. Runbook: docs/runbooks/centralized-logs.md
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alloy
+  namespace: remotebpo
+  labels: { app: alloy }
+spec:
+  replicas: 1                    # must stay 1: two collectors would send every line twice
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app: alloy }
+  template:
+    metadata:
+      labels: { app: alloy }
+    spec:
+      serviceAccountName: alloy
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: alloy
+          image: grafana/alloy:v1.5.1          # multi-arch image, runs on ARM (Oracle)
+          args:
+            - run
+            - /etc/alloy/config.alloy
+            - --storage.path=/tmp/alloy
+            - --server.http.listen-addr=0.0.0.0:12345
+          envFrom:
+            - secretRef: { name: grafana-cloud-logs }   # created by the pipeline, never committed
+          ports:
+            - { name: http, containerPort: 12345 }      # status page; not exposed (default-deny ingress)
+          readinessProbe:
+            httpGet: { path: /-/ready, port: 12345 }
+            periodSeconds: 15
+          livenessProbe:
+            httpGet: { path: /-/healthy, port: 12345 }
+            periodSeconds: 30
+          resources:
+            requests: { cpu: 25m, memory: 64Mi }
+            limits: { cpu: 250m, memory: 256Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: config, mountPath: /etc/alloy }
+            - { name: data, mountPath: /tmp/alloy }
+      volumes:
+        - name: config
+          configMap: { name: alloy-config }
+        - name: data
+          emptyDir: { sizeLimit: 512Mi }   # read positions + buffer while Grafana Cloud is unreachable

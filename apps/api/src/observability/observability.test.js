@@ -150,3 +150,44 @@ test('warns at startup when /ready has no checks, not when it has some', () => {
   healthRouter({ db: async () => true }, { logger: some.logger });
   assert.equal(some.lines.length, 0);
 });
+
+test('each field appears once per line, with the final status (no duplicate keys)', async () => {
+  const raw = [];
+  const destination = new Writable({
+    write(chunk, _enc, cb) {
+      raw.push(...chunk.toString().trim().split('\n'));
+      cb();
+    },
+  });
+  const logger = createLogger({ level: 'debug', destination });
+  const app = express();
+  app.use(requestLogger(logger));
+  app.use((req, res, next) => {
+    req.user = { id: 'u-42', role: 'candidate' }; // set later in the request, like auth does
+    next();
+  });
+  app.get('/ok', (req, res) => res.json({}));
+  app.get('/missing', (req, res) => res.status(404).json({}));
+  app.get('/boom', () => {
+    throw new Error('boom');
+  });
+  // eslint-disable-next-line no-unused-vars
+  app.use((err, req, res, next) => res.status(500).json({ error: 'internal' }));
+  const { server, url } = await start(app);
+  await fetch(`${url}/ok`);
+  await fetch(`${url}/missing`);
+  await fetch(`${url}/boom`);
+  server.close();
+
+  const lines = raw.filter((l) => l.includes('"requestId"'));
+  assert.equal(lines.length, 3);
+  for (const key of ['requestId', 'method', 'path', 'status', 'userId']) {
+    for (const line of lines) {
+      assert.equal(line.split(`"${key}":`).length - 1, 1, `${key} must appear once: ${line}`);
+    }
+  }
+  const parsed = lines.map((l) => JSON.parse(l));
+  assert.deepEqual(parsed.map((l) => l.status), [200, 404, 500]);
+  assert.deepEqual(parsed.map((l) => l.level), ['info', 'warn', 'error']);
+  assert.ok(parsed.every((l) => l.userId === 'u-42' && l.role === 'candidate'));
+});

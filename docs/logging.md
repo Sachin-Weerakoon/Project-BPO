@@ -65,8 +65,8 @@ Set with `LOG_LEVEL` (default `info`).
 - JWTs, cookies, `Authorization` headers, API keys, any value from `.env`
 - Full request or response **bodies**
 - Personal data: names, emails, phone numbers, addresses, NIC/ID numbers, CV contents, salary
-- `DATABASE_URL` or any connection string
-- SQL query **parameters** (they can hold personal data). Log the query name or table, not the values
+- `MONGODB_URI`, `DATABASE_URL` or any other connection string
+- Database query **values** (they can hold personal data). Log the collection or table name, not the values
 
 pino `redact` must cover at least:
 
@@ -102,7 +102,7 @@ services:
       options: { max-size: "10m", max-file: "5" }
 ```
 
-Pod logs are deleted with the pod, so a central log service (e.g. Grafana Loki or Better Stack) is a later step (Days 7-8, "Centralized logs from staging"), see [monitoring.md](monitoring.md).
+Pod logs are deleted with the pod, so staging also sends every log line to **Grafana Cloud Logs** (Loki), kept 14 days and searchable by `level`, `requestId`, `status` and `durationMs`. Setup and example searches: [runbooks/centralized-logs.md](runbooks/centralized-logs.md).
 
 ## 6. Checklist for a PR that adds logs
 
