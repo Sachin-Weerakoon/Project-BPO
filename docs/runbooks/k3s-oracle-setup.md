@@ -73,12 +73,13 @@ kubectl get pods -n kube-system             # traefik, coredns, metrics-server R
 
 ## 8. Deploy the app
 1. Create the namespace and the secret (later done by the CI pipeline from GitHub Actions secrets):
-   ```bash
+      ```bash
    kubectl create namespace remotebpo
    kubectl create secret generic api-secrets -n remotebpo \
-     --from-literal=DATABASE_URL='<supabase pooler url>' \
+     --from-literal=MONGODB_URI='mongodb+srv://<user>:<password>@<cluster>/remotebpo?maxPoolSize=10' \
      --from-literal=JWT_ACCESS_SECRET='<value>' --from-literal=JWT_REFRESH_SECRET='<value>'
    ```
+   Database: MongoDB Atlas (ADR 0003). Atlas Network Access must allow the cluster's public egress IP.
    Do not paste real values into shared notes or chat. Clear your shell history afterwards.
 2. `kubectl apply -k infra/k8s/base`
 3. `kubectl get pods -n remotebpo -w` until all pods are Running and Ready.

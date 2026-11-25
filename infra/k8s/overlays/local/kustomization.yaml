@@ -1,0 +1,63 @@
+# Local overlay: Docker Desktop Kubernetes on a laptop.
+# Usage: kubectl apply -k infra/k8s/overlays/local
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+  - mongo.yaml
+
+# Locally built images (docker build -t remotebpo-api:local ...). Tag "local" => no pull from a registry.
+images:
+  - name: ghcr.io/sachin-weerakoon/project-bpo-api
+    newName: remotebpo-api
+    newTag: local
+  - name: ghcr.io/sachin-weerakoon/project-bpo-web
+    newName: remotebpo-web
+    newTag: local
+
+configMapGenerator:
+  - name: api-config
+    namespace: remotebpo
+    behavior: merge
+    literals:
+      - CORS_ORIGIN=http://localhost:3000
+
+# LOCAL-ONLY dummy values. Real secrets are created by the deploy pipeline, never committed.
+secretGenerator:
+  - name: api-secrets
+    namespace: remotebpo
+    literals:
+      - MONGODB_URI=mongodb://mongo:27017/remotebpo
+      - JWT_ACCESS_SECRET=local-only-not-a-real-secret-1
+      - JWT_REFRESH_SECRET=local-only-not-a-real-secret-2
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+patches:
+  # 1 pod each on a laptop
+  - target: { kind: Deployment, name: api }
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+  - target: { kind: Deployment, name: web }
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+  # Autoscaling 1-2 pods locally (base: 2-4)
+  - target: { kind: HorizontalPodAutoscaler }
+    patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 1
+      - op: replace
+        path: /spec/maxReplicas
+        value: 2
+  # PDB minAvailable 1 would block draining with 1 replica locally
+  - target: { kind: PodDisruptionBudget }
+    patch: |-
+      - op: replace
+        path: /spec/minAvailable
+        value: 0
