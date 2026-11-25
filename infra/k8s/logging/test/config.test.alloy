@@ -1,0 +1,78 @@
+// Local test of the same processing steps as config.alloy (the block between the PROCESS markers
+// must stay identical). Reads sample log files instead of pods and writes to a local Loki.
+// How to run: see docs/runbooks/centralized-logs.md, section "Test locally".
+
+local.file_match "api" {
+  path_targets = [{"__path__" = sys.env("TEST_LOG_DIR") + "/api.log", "app" = "api", "namespace" = "remotebpo"}]
+}
+local.file_match "web" {
+  path_targets = [{"__path__" = sys.env("TEST_LOG_DIR") + "/web.log", "app" = "web", "namespace" = "remotebpo"}]
+}
+loki.source.file "api" {
+  targets       = local.file_match.api.targets
+  forward_to    = [loki.process.app.receiver]
+  tail_from_end = false
+}
+loki.source.file "web" {
+  targets       = local.file_match.web.targets
+  forward_to    = [loki.process.app.receiver]
+  tail_from_end = false
+}
+
+// --- PROCESS START ---
+loki.process "app" {
+  // Our API logs are JSON (docs/logging.md). Plain-text lines (web, redis) pass through unchanged.
+  stage.json {
+    expressions = {
+      level       = "level",
+      time        = "time",
+      request_id  = "requestId",
+      status      = "status",
+      duration_ms = "durationMs",
+    }
+  }
+
+  // Debug logs (health checks every few seconds) stay in the pod only
+  stage.drop {
+    source = "level"
+    value  = "debug"
+  }
+
+  // Safety net: the API never logs tokens, but never ship one if a line has it
+  stage.replace {
+    expression = "(?i)bearer\\s+([A-Za-z0-9._~+/=-]+)"
+    replace    = "[REDACTED]"
+  }
+
+  // level is a label (few values: fast to filter). requestId and status change on every
+  // line, so they are structured metadata: searchable, but not labels (keeps Loki cheap)
+  stage.labels {
+    values = { level = "" }
+  }
+  stage.structured_metadata {
+    values = {
+      request_id  = "",
+      status      = "",
+      duration_ms = "",
+    }
+  }
+
+  // Use the time the app wrote, not the time Alloy read the line
+  stage.timestamp {
+    source            = "time"
+    format            = "RFC3339"
+    action_on_failure = "skip"
+  }
+
+  forward_to = [loki.write.cloud.receiver]
+}
+// --- PROCESS END ---
+
+loki.write "cloud" {
+  endpoint {
+    url = sys.env("LOKI_URL")
+  }
+  external_labels = {
+    cluster = "local-test",
+  }
+}

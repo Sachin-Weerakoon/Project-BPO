@@ -1,0 +1,30 @@
+# Alloy can only list pods and read their logs, and only in the remotebpo namespace (least privilege).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: alloy
+  namespace: remotebpo
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: alloy-read-logs
+  namespace: remotebpo
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: alloy-read-logs
+  namespace: remotebpo
+subjects:
+  - kind: ServiceAccount
+    name: alloy
+    namespace: remotebpo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: alloy-read-logs

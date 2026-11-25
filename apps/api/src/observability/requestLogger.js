@@ -32,17 +32,31 @@ function requestLogger(logger = defaultLogger) {
       req: () => undefined,
       res: () => undefined,
     },
-    customProps(req, res) {
+    // Fields known when the request starts. pino-http adds these at the start AND again at the
+    // end unless they are identical, so they must not change during the request.
+    customProps(req) {
       return {
         requestId: req.id,
         method: req.method,
         path: (req.originalUrl || req.url).split('?')[0],
-        status: res.statusCode,
-        userId: req.user?.id ? String(req.user.id) : undefined,
-        role: req.user?.role,
       };
     },
+    // Fields known only when the response ends (real status, the user set by auth): added once.
+    customSuccessObject(req, res, val) {
+      return { ...val, ...endFields(req, res) };
+    },
+    customErrorObject(req, res, err, val) {
+      return { ...val, ...endFields(req, res) };
+    },
   });
+}
+
+function endFields(req, res) {
+  return {
+    status: res.statusCode,
+    userId: req.user?.id ? String(req.user.id) : undefined,
+    role: req.user?.role,
+  };
 }
 
 module.exports = { requestLogger };
